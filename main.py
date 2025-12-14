@@ -3,8 +3,29 @@ from tkinter import messagebox, simpledialog
 from code_it_for_it import login, change_password, enable_2fa, oauth_login, link_oauth, audit
 from oauth_client import github_login, google_login
 from hashlib import sha256
+import json
+from cryptography.fernet import Fernet
 
-RAW_ADMIN_CODE = """kP!9f@#A7%&B(*d2Qw8^Rs$Z1m)..."""  # shorten for readability
+def load_encoded_secrets():
+    with open("encoded_secrets.json", "r") as f:
+        encoded_secrets = json.load(f)
+    return encoded_secrets
+
+def decode_secret(encoded_secret, key):
+    cipher = Fernet(key)
+    return cipher.decrypt(encoded_secret).decode()
+
+def get_secret_key():
+    return b'9tf7hyuCCa-idN2gISr2NkTA8UMigL7RMPBEdie6oDk='
+
+encoded_secrets = load_encoded_secrets()
+
+github_client_id = decode_secret(encoded_secrets["github_id"].encode(), get_secret_key())
+github_client_secret = decode_secret(encoded_secrets["github_secret"].encode(), get_secret_key())
+google_client_id = decode_secret(encoded_secrets["google_id"].encode(), get_secret_key())
+google_client_secret = decode_secret(encoded_secrets["google_secret"].encode(), get_secret_key())
+
+RAW_ADMIN_CODE = """kP!9f@#A7%&B(*d2Qw8^Rs$Z1m)..."""
 ADMIN_HASH = sha256(RAW_ADMIN_CODE.encode()).hexdigest()
 
 current_user: str | None = None
