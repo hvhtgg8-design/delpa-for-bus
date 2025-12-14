@@ -6,30 +6,21 @@ from hashlib import sha256
 import json
 from cryptography.fernet import Fernet
 
-def load_encoded_secrets():
-    with open("encoded_secrets.json", "r") as f:
-        encoded_secrets = json.load(f)
-    return encoded_secrets
+with open("encoded_secrets.json", "r") as f:
+    secrets = json.load(f)
 
-def decode_secret(encoded_secret, key):
-    cipher = Fernet(key)
-    return cipher.decrypt(encoded_secret).decode()
+cipher = Fernet(secrets["key"].encode())
 
-def get_secret_key():
-    return b'9tf7hyuCCa-idN2gISr2NkTA8UMigL7RMPBEdie6oDk='
-
-encoded_secrets = load_encoded_secrets()
-
-github_client_id = decode_secret(encoded_secrets["github_id"].encode(), get_secret_key())
-github_client_secret = decode_secret(encoded_secrets["github_secret"].encode(), get_secret_key())
-google_client_id = decode_secret(encoded_secrets["google_id"].encode(), get_secret_key())
-google_client_secret = decode_secret(encoded_secrets["google_secret"].encode(), get_secret_key())
+GITHUB_CLIENT_ID = cipher.decrypt(secrets["github_id"].encode()).decode()
+GITHUB_CLIENT_SECRET = cipher.decrypt(secrets["github_secret"].encode()).decode()
+GOOGLE_CLIENT_ID = cipher.decrypt(secrets["google_id"].encode()).decode()
+GOOGLE_CLIENT_SECRET = cipher.decrypt(secrets["google_secret"].encode()).decode()
 
 RAW_ADMIN_CODE = """kP!9f@#A7%&B(*d2Qw8^Rs$Z1m)..."""
 ADMIN_HASH = sha256(RAW_ADMIN_CODE.encode()).hexdigest()
 
-current_user: str | None = None
-current_role: str = "user"
+current_user = None
+current_role = "user"
 
 root = tk.Tk()
 root.geometry("420x520")
@@ -60,14 +51,11 @@ def open_main_page():
     main_win = tk.Toplevel(root)
     main_win.title("Main Page")
     main_win.geometry("500x400")
-    
     tk.Label(main_win, text=f"Welcome {current_user} ({current_role})", font=("Arial", 16)).pack(pady=10)
     tk.Button(main_win, text="Logout", command=lambda: logout(main_win)).pack(pady=5)
-    
     dvd_canvas = tk.Canvas(main_win, width=400, height=300, bg="black")
     dvd_canvas.pack(pady=20)
     dvd_logo = dvd_canvas.create_text(50, 50, text="DVD", fill="white", font=("Arial", 24, "bold"))
-    
     dx, dy = 3, 3
     def move_logo():
         nonlocal dx, dy
@@ -102,13 +90,10 @@ def login_btn():
     username = u.get() or ""
     password = p.get() or ""
     user_pin = pin.get() or ""
-    
     if not login(username, password, user_pin):
         messagebox.showerror("Fail", "Login failed")
         return
-    
     current_user = username
-    
     if messagebox.askyesno("Admin", "Login as admin?"):
         if admin_prompt():
             current_role = "admin"
@@ -117,13 +102,12 @@ def login_btn():
             return
     else:
         current_role = "user"
-    
     root.withdraw()
     open_main_page()
 
 def gh():
     global current_user, current_role
-    r = github_login()
+    r = github_login(GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET)
     user = oauth_login("github", r["id"])
     if user:
         current_user = user
@@ -133,7 +117,7 @@ def gh():
 
 def gg():
     global current_user, current_role
-    r = google_login()
+    r = google_login(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
     user = oauth_login("google", r["id"])
     if user:
         current_user = user
